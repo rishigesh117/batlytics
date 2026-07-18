@@ -25,6 +25,12 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Setup Java 17 (Fixes Gradle Crash)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: Install Buildozer
         run: |
           pip install buildozer cython==0.29.33 virtualenv
@@ -32,7 +38,7 @@ jobs:
       - name: Install OS dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev automake lld
+          sudo apt-get install -y build-essential git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev automake lld
           
       - name: Unzip everything automatically
         run: |
@@ -44,14 +50,14 @@ jobs:
           SPEC_DIR=$(dirname $(find . -name buildozer.spec | head -n 1))
           cd "$SPEC_DIR"
           
-          # 2. Fix the ReportLab Bug (Bulletproof against spaces)
+          # 2. Fix the ReportLab Bug
           python3 -c "import re; data=open('buildozer.spec').read(); data=re.sub(r',\s*reportlab|reportlab\s*,', '', data); open('buildozer.spec','w').write(data)"
           pip install reportlab pillow --target .
           find . -name "*.so" -type f -delete
           
           # 3. Build it!
           export BUILDOZER_WARN_ON_ROOT=0
-          yes | buildozer -v android debug > buildozer_log.txt 2>&1
+          yes | buildozer -v android debug 2>&1 | tee buildozer_log.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
