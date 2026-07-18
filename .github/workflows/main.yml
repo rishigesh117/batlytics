@@ -9,6 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
+      - name: Add Extra Memory
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -21,7 +29,7 @@ jobs:
         run: |
           pip install buildozer cython==0.29.33 virtualenv
 
-      - name: Install OS dependencies (Fixed for Ubuntu)
+      - name: Install OS dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev automake lld
@@ -34,22 +42,27 @@ jobs:
         run: |
           # 1. Find the code folder
           SPEC_DIR=$(dirname $(find . -name buildozer.spec | head -n 1))
-          echo "Found code in: $SPEC_DIR"
           cd "$SPEC_DIR"
           
-          # 2. Fix the ReportLab Bug
-          echo "Fixing Reportlab..."
-          sed -i 's/,reportlab//g' buildozer.spec
-          sed -i 's/reportlab,//g' buildozer.spec
+          # 2. Fix the ReportLab Bug (Bulletproof against spaces)
+          python3 -c "import re; data=open('buildozer.spec').read(); data=re.sub(r',\s*reportlab|reportlab\s*,', '', data); open('buildozer.spec','w').write(data)"
           pip install reportlab pillow --target .
           find . -name "*.so" -type f -delete
           
           # 3. Build it!
           export BUILDOZER_WARN_ON_ROOT=0
-          yes | buildozer -v android debug
+          yes | buildozer -v android debug > buildozer_log.txt 2>&1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: batlytics-apk
           path: '**/*.apk'
+
+      - name: Save Error Log on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: crash-report
+          path: '**/buildozer_log.txt'
