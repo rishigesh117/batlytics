@@ -47,7 +47,7 @@ jobs:
       - name: Fix Reportlab & Build
         run: |
           # 1. Find the REAL code folder that contains all your screens
-          REAL_APP_DIR=$(dirname $(find . -type d -name "screens" | head -n 1))
+          REAL_APP_DIR=$(dirname "$(find . -type d -name 'screens' | head -n 1)")
           
           # 2. Rename it to remove spaces (Buildozer crashes instantly if a folder has spaces!)
           mv "$REAL_APP_DIR" ./batlytics_app
