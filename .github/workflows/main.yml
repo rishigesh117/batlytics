@@ -46,16 +46,19 @@ jobs:
           
       - name: Fix Reportlab & Build
         run: |
-          # Go to the REAL code folder (the one that actually contains the 'screens' folder)
+          # 1. Find the REAL code folder that contains all your screens
           REAL_APP_DIR=$(dirname $(find . -type d -name "screens" | head -n 1))
-          cd "$REAL_APP_DIR"
           
-          # Fix Reportlab and safely add Pillow
+          # 2. Rename it to remove spaces (Buildozer crashes instantly if a folder has spaces!)
+          mv "$REAL_APP_DIR" ./batlytics_app
+          cd ./batlytics_app
+          
+          # 3. Fix Reportlab and safely add Pillow
           python3 -c "import re; d = open('buildozer.spec').read(); d = re.sub(r',\s*reportlab|reportlab\s*,', '', d); m = re.search(r'^requirements\s*=\s*(.*)$', d, re.MULTILINE); d = d.replace(m.group(0), m.group(0) + ', pillow') if m and 'pillow' not in m.group(1).lower() else d; open('buildozer.spec','w').write(d)"
           pip install reportlab --target .
           find . -name "*.so" -type f -delete
           
-          # Build it!
+          # 4. Build it!
           export BUILDOZER_WARN_ON_ROOT=0
           yes | buildozer -v android debug 2>&1 | tee buildozer_log.txt
 
