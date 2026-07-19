@@ -44,18 +44,16 @@ jobs:
         run: |
           find . -name "*.zip" -exec unzip -o -q {} \; || true
           
-      - name: Fix Reportlab & Add Crash Screen
+      - name: Fix Reportlab & Build
         run: |
-          SPEC_DIR=$(dirname $(find . -name buildozer.spec | head -n 1))
-          cd "$SPEC_DIR"
+          # Go to the REAL code folder (the one that actually contains the 'screens' folder)
+          REAL_APP_DIR=$(dirname $(find . -type d -name "screens" | head -n 1))
+          cd "$REAL_APP_DIR"
           
           # Fix Reportlab and safely add Pillow
           python3 -c "import re; d = open('buildozer.spec').read(); d = re.sub(r',\s*reportlab|reportlab\s*,', '', d); m = re.search(r'^requirements\s*=\s*(.*)$', d, re.MULTILINE); d = d.replace(m.group(0), m.group(0) + ', pillow') if m and 'pillow' not in m.group(1).lower() else d; open('buildozer.spec','w').write(d)"
           pip install reportlab --target .
           find . -name "*.so" -type f -delete
-          
-          # Inject the Genius Crash Screen!
-          python3 -c "import sys; hook='''import sys, traceback\ndef crash_hook(exctype, value, tb):\n err = ''.join(traceback.format_exception(exctype, value, tb))\n print(err)\n try:\n  from kivy.app import App\n  from kivy.uix.label import Label\n  from kivy.uix.scrollview import ScrollView\n  from kivy.core.window import Window\n  class CrashApp(App):\n   def build(self):\n    sv = ScrollView(size=Window.size)\n    lbl = Label(text=err, size_hint_y=None, font_size='12sp', halign='left', valign='top')\n    lbl.bind(width=lambda *x: lbl.setter('text_size')(lbl, (lbl.width, None)))\n    lbl.bind(texture_size=lbl.setter('size'))\n    sv.add_widget(lbl)\n    return sv\n  CrashApp().run()\n except Exception as e:\n  print('CrashApp failed', e)\nsys.excepthook = crash_hook\n'''; content=open('main.py').read(); open('main.py','w').write(hook + '\n' + content) if 'crash_hook' not in content else None"
           
           # Build it!
           export BUILDOZER_WARN_ON_ROOT=0
