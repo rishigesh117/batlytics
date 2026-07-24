@@ -111,20 +111,34 @@ class _PDFWriter:
     def write_title(self, text, r=0.18, g=0.49, b=0.20):
         """Write a large title."""
         self._check_page(30)
+        approx_width = len(text) * 11
+        x = (self._page_width - approx_width) / 2
         self._current_page_stream += self._text_cmd(
-            self._margin, self._y, text, font="F2", size=20, r=r, g=g, b=b
+            x, self._y, text, font="F2", size=20, r=r, g=g, b=b
         )
         self._y -= 28
 
     def write_subtitle(self, text):
         """Write a centered subtitle."""
         self._check_page(22)
-        # Approximate centering
-        x = self._page_width / 2 - len(text) * 3.2
+        approx_width = len(text) * 7
+        x = (self._page_width - approx_width) / 2
         self._current_page_stream += self._text_cmd(
-            max(self._margin, x), self._y, text, font="F1", size=13, r=0.33, g=0.33, b=0.33
+            x, self._y, text, font="F1", size=13, r=0.33, g=0.33, b=0.33
         )
         self._y -= 20
+
+    def write_info_line(self, label, value):
+        self._check_page(16)
+        x_label = self._page_width / 2 - 70
+        x_val = self._page_width / 2 - 10
+        self._current_page_stream += self._text_cmd(
+            x_label, self._y, label, font="F2", size=10, r=0.18, g=0.49, b=0.20
+        )
+        self._current_page_stream += self._text_cmd(
+            x_val, self._y, value, font="F1", size=10, r=0.1, g=0.1, b=0.1
+        )
+        self._y -= 18
 
     def write_heading(self, text, r=0.18, g=0.49, b=0.20):
         """Write a section heading."""
@@ -147,15 +161,16 @@ class _PDFWriter:
     def write_result(self, text):
         """Write the match result in a prominent style."""
         self._check_page(25)
-        x = self._page_width / 2 - len(text) * 4
+        approx_width = len(text) * 7.5
+        x = (self._page_width - approx_width) / 2
         self._current_page_stream += self._text_cmd(
-            max(self._margin, x), self._y, text, font="F2", size=15,
+            x, self._y, text, font="F2", size=16,
             r=0.85, g=0.26, b=0.08
         )
         self._y -= 22
 
-    def write_table(self, headers, rows, col_widths=None):
-        """Write a table with headers and rows."""
+    def write_table(self, headers, rows, col_widths=None, header_bg=(0.91, 0.96, 0.91), header_fg=(0.11, 0.37, 0.13)):
+        """Write a table with headers, rows, and grid lines."""
         usable = self._page_width - 2 * self._margin
         num_cols = len(headers)
         if col_widths is None:
@@ -172,19 +187,20 @@ class _PDFWriter:
         self._check_page(header_height + row_height * min(3, len(rows) + 1))
 
         x_start = self._margin
+        y_start = self._y
 
         # Header background
         self._current_page_stream += self._rect_cmd(
-            x_start, self._y - header_height + 4, usable, header_height,
-            r=0.91, g=0.96, b=0.91
+            x_start, self._y - header_height, usable, header_height,
+            r=header_bg[0], g=header_bg[1], b=header_bg[2]
         )
 
         # Header text
         x = x_start + 4
         for i, h in enumerate(headers):
             self._current_page_stream += self._text_cmd(
-                x, self._y - 10, h, font="F2", size=9,
-                r=0.11, g=0.37, b=0.13
+                x, self._y - 14, h, font="F2", size=9,
+                r=header_fg[0], g=header_fg[1], b=header_fg[2]
             )
             x += col_widths[i]
         self._y -= header_height
@@ -192,11 +208,10 @@ class _PDFWriter:
         # Data rows
         for row_idx, row in enumerate(rows):
             self._check_page(row_height + 5)
-
             # Alternate row background
             if row_idx % 2 == 1:
                 self._current_page_stream += self._rect_cmd(
-                    x_start, self._y - row_height + 4, usable, row_height,
+                    x_start, self._y - row_height, usable, row_height,
                     r=0.97, g=0.97, b=0.95
                 )
 
@@ -207,17 +222,32 @@ class _PDFWriter:
                 if len(cell_text) > 20 and i < 2:
                     cell_text = cell_text[:18] + ".."
                 self._current_page_stream += self._text_cmd(
-                    x, self._y - 11, cell_text, font="F1", size=8.5,
+                    x, self._y - 13, cell_text, font="F1", size=8.5,
                     r=0.15, g=0.15, b=0.15
                 )
                 x += col_widths[i]
             self._y -= row_height
 
-        # Bottom line
-        self._current_page_stream += self._line_cmd(
-            x_start, self._y + 2, x_start + usable, self._y + 2
-        )
-        self._y -= 6
+        # Draw grid lines
+        y_bottom = self._y
+        
+        # Horizontal lines (header top, header bottom, then rows)
+        cur_y = y_start
+        self._current_page_stream += self._line_cmd(x_start, cur_y, x_start + usable, cur_y)
+        cur_y -= header_height
+        self._current_page_stream += self._line_cmd(x_start, cur_y, x_start + usable, cur_y)
+        for _ in rows:
+            cur_y -= row_height
+            self._current_page_stream += self._line_cmd(x_start, cur_y, x_start + usable, cur_y)
+            
+        # Vertical lines
+        x_line = x_start
+        self._current_page_stream += self._line_cmd(x_line, y_start, x_line, y_bottom)
+        for w in col_widths:
+            x_line += w
+            self._current_page_stream += self._line_cmd(x_line, y_start, x_line, y_bottom)
+
+        self._y -= 10
 
     def write_spacer(self, height=10):
         """Add vertical space."""
@@ -334,11 +364,12 @@ class ScorecardPDF:
 
         # Match info
         date_str = datetime.now().strftime("%d %b %Y, %H:%M")
-        pdf.write_text(f"Format: {self.match['overs']} Overs, {self.match['players_per_team']} Players per side")
+        pdf.write_spacer(15)
+        pdf.write_info_line("Format", f"{self.match['overs']} Overs, {self.match['players_per_team']} Players")
         if self.match.get('toss_winner'):
-            pdf.write_text(f"Toss: {self.match['toss_winner']} won and chose to {self.match.get('toss_choice', 'bat')}")
-        pdf.write_text(f"Date: {date_str}")
-        pdf.write_spacer(8)
+            pdf.write_info_line("Toss", f"{self.match['toss_winner']} won and chose to {self.match.get('toss_choice', 'bat')}")
+        pdf.write_info_line("Date", date_str)
+        pdf.write_spacer(20)
 
         # 2. Result
         result = self.engine.get_match_result()
@@ -436,7 +467,13 @@ class ScorecardPDF:
                 ])
 
             bowl_widths = [110, 40, 40, 40, 40, 50, 40, 40]
-            pdf.write_table(bowl_headers, bowl_rows, col_widths=bowl_widths)
+            pdf.write_table(
+                bowl_headers, 
+                bowl_rows, 
+                col_widths=bowl_widths,
+                header_bg=(1.0, 0.95, 0.88),
+                header_fg=(0.9, 0.32, 0.0)
+            )
             pdf.write_spacer(15)
 
         # Footer
