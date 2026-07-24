@@ -376,8 +376,13 @@ class ScorecardPDF:
         date_str = datetime.now().strftime("%d %b %Y, %H:%M")
         pdf.write_spacer(15)
         pdf.write_info_line("Format", f"{self.match['overs']} Overs, {self.match['players_per_team']} Players")
-        if self.match.get('toss_winner'):
-            pdf.write_info_line("Toss", f"{self.match['toss_winner']} won and chose to {self.match.get('toss_choice', 'bat')}")
+        
+        toss_winner = self.match.get('toss_winner')
+        if not toss_winner:
+            toss_winner = self.match.get('team_a', 'Unknown')
+        toss_choice = self.match.get('toss_choice') or 'bat'
+        pdf.write_info_line("Toss", f"{toss_winner} won and chose to {toss_choice}")
+        
         pdf.write_info_line("Date", date_str)
         pdf.write_spacer(20)
 
