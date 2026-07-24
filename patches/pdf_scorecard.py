@@ -103,7 +103,7 @@ class _PDFWriter:
             f"<< /Type /Page /MediaBox [0 0 {self._page_width:.2f} {self._page_height:.2f}] "
             f"/Contents {stream_obj_idx} 0 R "
             f"/Resources << /Font << {font_refs} >> >> "
-            f"/Parent 1 0 R >>".encode()
+            f"/Parent _PAGES_REF_ >>".encode()
         )
         self._pages.append(page_obj_idx)
         self._current_page_stream = b""
@@ -236,22 +236,11 @@ class _PDFWriter:
             )
             self._flush_page()
 
-        # Build the Pages object (must be object 1 for our Parent references)
-        # We need to rebuild the object list with Pages as object 1
-        # Strategy: build final output directly
-
-        # Collect all objects in final order:
-        # Obj 1: Pages (catalog parent)
-        # Obj 2: Catalog
-        # Obj 3+: fonts, streams, pages
-
         final_objects = []  # list of bytes, index = obj_num - 1
-
-        # Placeholder for Pages (obj 1) and Catalog (obj 2)
         final_objects.append(b"")  # Pages placeholder
         final_objects.append(b"")  # Catalog placeholder
 
-        # Add existing objects (fonts, streams, pages) with shifted numbers
+        # Add existing objects with shifted numbers
         obj_map = {}  # old_obj_num -> new_obj_num
         for old_idx, obj_data in enumerate(self._objects):
             new_num = len(final_objects) + 1
@@ -268,17 +257,17 @@ class _PDFWriter:
         final_objects[1] = b"<< /Type /Catalog /Pages 1 0 R >>"
 
         # Now fix internal references in page objects
-        # Each page has /Parent 1 0 R and /Contents N 0 R and /Font refs
-        # We need to update the object numbers
         for i, obj_data in enumerate(final_objects):
-            obj_str = obj_data.decode("latin-1")
             # Replace old object references with new ones
             for old_num, new_num in obj_map.items():
-                obj_str = obj_str.replace(f"{old_num} 0 R", f"_REF_{new_num}_")
+                obj_data = obj_data.replace(f"{old_num} 0 R".encode(), f"_REF_{new_num}_".encode())
             # Now replace placeholders with actual references
             for old_num, new_num in obj_map.items():
-                obj_str = obj_str.replace(f"_REF_{new_num}_", f"{new_num} 0 R")
-            final_objects[i] = obj_str.encode("latin-1")
+                obj_data = obj_data.replace(f"_REF_{new_num}_".encode(), f"{new_num} 0 R".encode())
+            
+            # Replace the pages placeholder
+            obj_data = obj_data.replace(b"_PAGES_REF_", b"1 0 R")
+            final_objects[i] = obj_data
 
         # Write PDF
         with open(filepath, "wb") as f:
