@@ -254,7 +254,7 @@ class _PDFWriter:
         final_objects[0] = f"<< /Type /Pages /Kids [{page_refs}] /Count {len(self._pages)} >>".encode()
 
         # Build Catalog (obj 2)
-        final_objects[1] = b"<< /Type /Catalog /Pages 1 0 R >>"
+        final_objects[1] = b"<< /Type /Catalog /Pages _PAGES_REF_ >>"
 
         # Now fix internal references in page objects
         for i, obj_data in enumerate(final_objects):
