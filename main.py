@@ -54,7 +54,7 @@ class BatlyticsApp(App):
     def build(self):
         # Set window background color (cricket green tint)
         Window.clearcolor = (0.96, 0.96, 0.94, 1)
-        Window.softinput_mode = 'pan'
+        Window.softinput_mode = 'resize'
 
         # Bind keyboard events for back button navigation
         Window.bind(on_keyboard=self.on_keyboard)
