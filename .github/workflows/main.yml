@@ -53,18 +53,17 @@ jobs:
           mv "$REAL_APP_DIR" ./batlytics_app
           cd ./batlytics_app
           
-          # 3. Apply keyboard scrolling patches
+          # 3. Apply all patches
           REPO_ROOT="${GITHUB_WORKSPACE}"
           cp "$REPO_ROOT/patches/match_setup.py" screens/match_setup.py
           cp "$REPO_ROOT/patches/match_setup.kv" kv/match_setup.kv
           cp "$REPO_ROOT/main.py" main.py
+          cp "$REPO_ROOT/patches/pdf_scorecard.py" pdf_scorecard.py
+          cp "$REPO_ROOT/patches/share_helper.py" share_helper.py
+          cp "$REPO_ROOT/patches/match_result.py" screens/match_result.py
+          cp "$REPO_ROOT/patches/match_history.py" screens/match_history.py
           
-          # 4. Fix Reportlab and safely add Pillow
-          python3 -c "import re; d = open('buildozer.spec').read(); d = re.sub(r',\s*reportlab|reportlab\s*,', '', d); m = re.search(r'^requirements\s*=\s*(.*)$', d, re.MULTILINE); d = d.replace(m.group(0), m.group(0) + ', pillow') if m and 'pillow' not in m.group(1).lower() else d; open('buildozer.spec','w').write(d)"
-          pip install reportlab --target .
-          find . -name "*.so" -type f -delete
-          
-          # 5. Build it!
+          # 4. Build it!
           export BUILDOZER_WARN_ON_ROOT=0
           yes | buildozer -v android debug 2>&1 | tee buildozer_log.txt
 
