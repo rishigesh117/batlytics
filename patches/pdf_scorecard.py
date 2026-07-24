@@ -130,8 +130,9 @@ class _PDFWriter:
 
     def write_info_line(self, label, value):
         self._check_page(16)
-        x_label = self._page_width / 2 - 70
-        x_val = self._page_width / 2 - 10
+        # Center the info block like reportlab did
+        x_label = 160
+        x_val = 240
         self._current_page_stream += self._text_cmd(
             x_label, self._y, label, font="F2", size=10, r=0.18, g=0.49, b=0.20
         )
@@ -140,21 +141,25 @@ class _PDFWriter:
         )
         self._y -= 18
 
-    def write_heading(self, text, r=0.18, g=0.49, b=0.20):
+    def write_heading(self, text, r=0.18, g=0.49, b=0.20, x_start=None):
         """Write a section heading."""
         self._check_page(25)
         self._y -= 8
+        if x_start is None:
+            x_start = (self._page_width - 490) / 2
         self._current_page_stream += self._text_cmd(
-            self._margin, self._y, text, font="F2", size=13, r=r, g=g, b=b
+            x_start, self._y, text, font="F2", size=13, r=r, g=g, b=b
         )
         self._y -= 20
 
-    def write_text(self, text, bold=False, r=0.1, g=0.1, b=0.1, size=10):
+    def write_text(self, text, bold=False, r=0.1, g=0.1, b=0.1, size=10, x_start=None):
         """Write a line of text."""
         self._check_page(16)
         font = "F2" if bold else "F1"
+        if x_start is None:
+            x_start = (self._page_width - 490) / 2
         self._current_page_stream += self._text_cmd(
-            self._margin, self._y, text, font=font, size=size, r=r, g=g, b=b
+            x_start, self._y, text, font=font, size=size, r=r, g=g, b=b
         )
         self._y -= size + 4
 
@@ -171,14 +176,10 @@ class _PDFWriter:
 
     def write_table(self, headers, rows, col_widths=None, header_bg=(0.91, 0.96, 0.91), header_fg=(0.11, 0.37, 0.13)):
         """Write a table with headers, rows, and grid lines."""
-        usable = self._page_width - 2 * self._margin
+        usable = sum(col_widths) if col_widths else (self._page_width - 2 * self._margin)
         num_cols = len(headers)
         if col_widths is None:
             col_widths = [usable / num_cols] * num_cols
-        # Normalize widths to fit usable area
-        total_w = sum(col_widths)
-        if total_w > 0:
-            col_widths = [w * usable / total_w for w in col_widths]
 
         row_height = 18
         header_height = 20
@@ -186,7 +187,7 @@ class _PDFWriter:
         # Check if we need at least header + 2 rows of space
         self._check_page(header_height + row_height * min(3, len(rows) + 1))
 
-        x_start = self._margin
+        x_start = (self._page_width - usable) / 2
         y_start = self._y
 
         # Header background
@@ -196,10 +197,14 @@ class _PDFWriter:
         )
 
         # Header text
-        x = x_start + 4
+        x = x_start
         for i, h in enumerate(headers):
+            # Center align headers for index > 1
+            align_center = i > 1
+            approx_w = len(h) * 5
+            x_text = x + (col_widths[i] - approx_w) / 2 if align_center else x + 4
             self._current_page_stream += self._text_cmd(
-                x, self._y - 14, h, font="F2", size=9,
+                x_text, self._y - 14, h, font="F2", size=9,
                 r=header_fg[0], g=header_fg[1], b=header_fg[2]
             )
             x += col_widths[i]
@@ -215,14 +220,19 @@ class _PDFWriter:
                     r=0.97, g=0.97, b=0.95
                 )
 
-            x = x_start + 4
+            x = x_start
             for i, cell in enumerate(row):
                 cell_text = str(cell) if cell is not None else ""
-                # Truncate long text
+                align_center = i > 1
+                approx_w = len(cell_text) * 4.5
+                x_text = x + (col_widths[i] - approx_w) / 2 if align_center else x + 4
+
+                # Truncate long text for first two columns
                 if len(cell_text) > 20 and i < 2:
                     cell_text = cell_text[:18] + ".."
+                    
                 self._current_page_stream += self._text_cmd(
-                    x, self._y - 13, cell_text, font="F1", size=8.5,
+                    x_text, self._y - 13, cell_text, font="F1", size=8.5,
                     r=0.15, g=0.15, b=0.15
                 )
                 x += col_widths[i]
@@ -424,7 +434,7 @@ class ScorecardPDF:
                     str(s['fours']), str(s['sixes']), sr
                 ])
 
-            bat_widths = [110, 140, 35, 35, 35, 35, 55]
+            bat_widths = [120, 150, 40, 40, 40, 40, 60]
             pdf.write_table(bat_headers, bat_rows, col_widths=bat_widths)
 
             # Extras
@@ -466,7 +476,7 @@ class ScorecardPDF:
                     str(bw.get('noballs', 0))
                 ])
 
-            bowl_widths = [110, 40, 40, 40, 40, 50, 40, 40]
+            bowl_widths = [120, 50, 50, 50, 50, 60, 50, 60]
             pdf.write_table(
                 bowl_headers, 
                 bowl_rows, 
