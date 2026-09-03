@@ -5,7 +5,7 @@ title = Batlytics
 package.name = batlytics
 package.domain = com.batlytics
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,ttf,db
+source.include_exts = py,png,jpg,kv,atlas,ttf
 version = 1.1.0
 
 # Application requirements

@@ -185,21 +185,17 @@ class MatchSetupScreen(Screen):
         # Update the bottom padding spacer so content scrolls above keyboard
         keyboard_spacer = self.ids.get('keyboard_spacer')
         if keyboard_spacer:
-            keyboard_spacer.height = max(dp(80), height)
+            keyboard_spacer.height = max(dp(100), height)
         # When keyboard opens, scroll the focused input into view
         if height > 0:
             Clock.schedule_once(self._scroll_to_focused, 0.15)
         else:
             # Keyboard closed — restore spacer
             if keyboard_spacer:
-                keyboard_spacer.height = dp(80)
+                keyboard_spacer.height = dp(100)
 
     def _scroll_to_focused(self, dt):
         """Scroll the ScrollView so the currently focused TextInput is visible."""
-        scroll_view = self.ids.get('setup_scroll')
-        if not scroll_view:
-            return
-        
         # Find the focused widget
         focused = None
         for inp in self._get_all_inputs():
@@ -207,48 +203,8 @@ class MatchSetupScreen(Screen):
                 focused = inp
                 break
         
-        if not focused:
-            return
-
-        # Calculate the widget's position relative to the ScrollView
-        # We want to scroll so the focused widget is roughly 1/3 from the top
-        # of the visible area (comfortable viewing position above keyboard)
-        sv = scroll_view
-        content = sv.children[0] if sv.children else None
-        if not content:
-            return
-
-        # Get the focused widget's y position in the content's coordinate space
-        widget_y = focused.to_window(0, 0)[1]
-        sv_y = sv.to_window(0, 0)[1]
-        sv_top = sv_y + sv.height
-
-        # The visible area above keyboard
-        visible_height = sv.height
-        # We want the widget to be about 1/3 from the top of visible area
-        target_y_in_sv = sv_y + visible_height * 0.35
-
-        # Calculate how much we need to scroll
-        diff = widget_y - target_y_in_sv
-        
-        if abs(diff) < dp(10):
-            return  # Already in a good position
-
-        # Convert to scroll_y offset
-        # scroll_y = 1 means top, scroll_y = 0 means bottom
-        content_height = content.height
-        scrollable = content_height - sv.height
-        if scrollable <= 0:
-            return
-
-        # Adjust scroll_y
-        new_scroll_y = sv.scroll_y + (diff / scrollable)
-        new_scroll_y = max(0, min(1, new_scroll_y))
-
-        # Animate the scroll for smoothness
-        Animation.cancel_all(sv, 'scroll_y')
-        anim = Animation(scroll_y=new_scroll_y, duration=0.2, t='out_quad')
-        anim.start(sv)
+        if focused:
+            self._scroll_to_widget(focused)
 
     def _get_all_inputs(self):
         """Return an ordered list of all TextInput widgets on this screen.
@@ -363,35 +319,56 @@ class MatchSetupScreen(Screen):
             Clock.schedule_once(lambda dt: self._scroll_to_widget(instance), 0.3)
 
     def _scroll_to_widget(self, widget):
-        """Scroll the ScrollView to make the given widget visible and comfortable."""
+        """Scroll the ScrollView so the given widget is visible and comfortable.
+        
+        WhatsApp-style: positions the focused input at roughly 35% from the top
+        of the visible area, so the user can see context above AND has room
+        below for autocomplete suggestions / keyboard.
+        """
         scroll_view = self.ids.get('setup_scroll')
         if not scroll_view or not scroll_view.children:
             return
 
         content = scroll_view.children[0]
         content_height = content.height
-        scrollable = content_height - scroll_view.height
+        sv_height = scroll_view.height
+        scrollable = content_height - sv_height
         if scrollable <= 0:
             return
 
-        # Get the widget's position relative to content
-        # widget.to_window gives absolute position, then convert to content-relative
-        widget_win_y = widget.to_window(0, 0)[1]
-        sv_win_y = scroll_view.to_window(0, 0)[1]
-        sv_height = scroll_view.height
+        # Convert widget position to content-relative y coordinate
+        # In Kivy, content y=0 is at the bottom of the content
+        widget_y_in_content = widget.parent.to_widget(*widget.to_window(0, 0))[1]
+        # Walk up from widget's direct parent to the content root to get true content-relative y
+        widget_win_pos = widget.to_window(0, 0)
+        content_win_pos = content.to_window(0, 0)
+        widget_y_in_content = widget_win_pos[1] - content_win_pos[1]
 
-        # We want the widget to be positioned about 40% from the top of the visible area
-        target_pos = sv_win_y + sv_height * 0.4
+        # Distance from the BOTTOM of content to the widget
+        # scroll_y=1 means we see the top of content, scroll_y=0 means bottom
+        # The visible window shows content from:
+        #   bottom_visible = scrollable * (1 - scroll_y)
+        #   top_visible = bottom_visible + sv_height
 
-        diff = widget_win_y - target_pos
-        if abs(diff) < dp(15):
+        # We want the widget to appear at 35% from the TOP of the visible area
+        # That means: widget_y_in_content = bottom_visible + sv_height * 0.65
+        # Solving for scroll_y:
+        #   bottom_visible = widget_y_in_content - sv_height * 0.65
+        #   scrollable * (1 - scroll_y) = widget_y_in_content - sv_height * 0.65
+        #   1 - scroll_y = (widget_y_in_content - sv_height * 0.65) / scrollable
+        #   scroll_y = 1 - (widget_y_in_content - sv_height * 0.65) / scrollable
+
+        desired_bottom = widget_y_in_content - sv_height * 0.65
+        new_scroll_y = 1.0 - (desired_bottom / scrollable)
+        new_scroll_y = max(0.0, min(1.0, new_scroll_y))
+
+        # Only animate if the change is meaningful
+        if abs(new_scroll_y - scroll_view.scroll_y) < 0.01:
             return
 
-        new_scroll_y = scroll_view.scroll_y + (diff / scrollable)
-        new_scroll_y = max(0, min(1, new_scroll_y))
-
+        # Smooth animation — out_cubic gives a natural deceleration like WhatsApp
         Animation.cancel_all(scroll_view, 'scroll_y')
-        anim = Animation(scroll_y=new_scroll_y, duration=0.25, t='out_cubic')
+        anim = Animation(scroll_y=new_scroll_y, duration=0.3, t='out_cubic')
         anim.start(scroll_view)
 
     def _update_player_a(self, index, value):
@@ -474,11 +451,11 @@ class MatchSetupScreen(Screen):
 
     def _show_numeric_popup(self, title, current_val, min_val, max_val, on_submit):
         """Show a popup to type a numeric value."""
-        popup = ModalView(size_hint=(0.8, None), height=dp(200), background_color=(0, 0, 0, 0.5))
+        popup = ModalView(size_hint=(0.8, None), height=dp(200), background_color=(0.12, 0.12, 0.12, 0.95))
         content = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(15))
         content.add_widget(Label(
             text=title, font_size='18sp', bold=True,
-            color=(0.1, 0.1, 0.1, 1), size_hint_y=None, height=dp(30)
+            color=(1, 1, 1, 1), size_hint_y=None, height=dp(30)
         ))
         text_input = TextInput(
             text=str(current_val), multiline=False, input_filter='int',

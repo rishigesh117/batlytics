@@ -33,26 +33,26 @@ jobs:
 
       - name: Install Buildozer
         run: |
-          pip install buildozer cython==0.29.33 virtualenv
+          pip install buildozer cython==0.29.33 virtualenv==20.21.0
 
       - name: Install OS dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev automake lld
-          
+
       - name: Unzip everything automatically
         run: |
           find . -name "*.zip" -exec unzip -o -q {} \; || true
-          
+
       - name: Fix Reportlab & Build
         run: |
           # 1. Find the REAL code folder that contains all your screens
           REAL_APP_DIR=$(dirname "$(find . -type d -name 'screens' | head -n 1)")
-          
-          # 2. Rename it to remove spaces (Buildozer crashes instantly if a folder has spaces!)
+
+          # 2. Rename it to remove spaces
           mv "$REAL_APP_DIR" ./batlytics_app
           cd ./batlytics_app
-          
+
           # 3. Apply all patches
           REPO_ROOT="${GITHUB_WORKSPACE}"
           cp "$REPO_ROOT/patches/match_setup.py" screens/match_setup.py
@@ -62,17 +62,73 @@ jobs:
           cp "$REPO_ROOT/patches/share_helper.py" share_helper.py
           cp "$REPO_ROOT/patches/match_result.py" screens/match_result.py
           cp "$REPO_ROOT/patches/match_history.py" screens/match_history.py
-          
-          # 4. Build it!
+          cp "$REPO_ROOT/patches/settings.py" screens/settings.py
+          cp "$REPO_ROOT/database.py" database.py
+
+          # 4. Fix buildozer.spec for Android 14 (API 34) + NDK 26b
+          sed -i 's/,reportlab//g' buildozer.spec
+          sed -i 's/android.api = 35/android.api = 34/g' buildozer.spec
+          sed -i 's/android.ndk = 25b/android.ndk = 26b/g' buildozer.spec
+          sed -i 's/requirements = python3,kivy,plyer,pyjnius,android/requirements = python3,kivy,plyer,pyjnius,android,sqlite3/g' buildozer.spec
+          sed -i 's/,db//g' buildozer.spec
+          sed -i '/\[buildozer\]/i android.release_artifact = apk' buildozer.spec
+          sed -i '/\[buildozer\]/i p4a.branch = develop' buildozer.spec
+
+          # 5. Show the final buildozer.spec for debugging
+          echo "=== FINAL BUILDOZER.SPEC ==="
+          cat buildozer.spec
+          echo "=== END ==="
+
+          # 6. Delete ALL old database files
+          find . -name "*.db" -delete
+          find . -name "*.db-journal" -delete
+          echo "=== Cleaned all .db files ==="
+
+          # 7. Check for Keystore or Generate one
+          if [ -z "${{ secrets.KEYSTORE_B64 }}" ]; then
+            echo "No Keystore found in secrets. Generating a new official one..."
+            keytool -genkey -v -keystore release.keystore -alias batlytics -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Batlytics, OU=Batlytics, O=Batlytics, L=City, S=State, C=US" -storepass "batlytics123" -keypass "batlytics123"
+
+            echo ""
+            echo "====================================================================="
+            echo "ACTION REQUIRED: YOU MUST SAVE THIS KEYSTORE TO YOUR GITHUB SECRETS!"
+            echo "====================================================================="
+            echo "1. Go to your GitHub Repository -> Settings -> Secrets and variables -> Actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: KEYSTORE_B64"
+            echo "4. Value: (Copy and paste the giant block of random text below)"
+            echo "---------------------------------------------------------------------"
+            base64 -w 0 release.keystore
+            echo ""
+            echo "---------------------------------------------------------------------"
+            echo "5. Create another secret named KEYSTORE_PASS with value: batlytics123"
+            echo "6. Go back to Actions and re-run this build!"
+            echo "====================================================================="
+            exit 1
+          else
+            echo "Keystore found! Decoding..."
+            echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > release.keystore
+          fi
+
+          # 8. Build it in RELEASE mode!
           export BUILDOZER_WARN_ON_ROOT=0
-          yes | buildozer -v android debug 2>&1 | tee buildozer_log.txt
+          export P4A_RELEASE_KEYSTORE=$(pwd)/release.keystore
+          export P4A_RELEASE_KEYSTORE_PASSWD=${{ secrets.KEYSTORE_PASS }}
+          export P4A_RELEASE_KEYALIAS_PASSWD=${{ secrets.KEYSTORE_PASS }}
+          export P4A_RELEASE_KEYALIAS=batlytics
+
+          set +o pipefail
+          (yes | buildozer -v android release) 2>&1 | tee buildozer_log.txt
+          exit ${PIPESTATUS[0]}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: batlytics-apk
-          path: '**/*.apk'
+          path: |
+            **/*.apk
+            **/*.aab
 
       - name: Save Error Log on Failure
         uses: actions/upload-artifact@v4

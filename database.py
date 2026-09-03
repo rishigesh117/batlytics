@@ -7,7 +7,21 @@ import os
 from datetime import datetime
 
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "batlytics.db")
+def _get_app_data_dir():
+    """Get the proper user data directory for the database.
+    On Android, this returns the app's private files directory.
+    On desktop, it falls back to the script's directory."""
+    try:
+        from android.storage import app_storage_path  # noqa: F811
+        data_dir = app_storage_path()
+    except ImportError:
+        # Desktop / development fallback
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
+DB_PATH = os.path.join(_get_app_data_dir(), "batlytics.db")
 
 
 def get_connection(db_path=None):
