@@ -57,15 +57,19 @@ class AutocompleteInput(TextInput):
             if self.dropdown:
                 self.dropdown.dismiss()
             return
+
+        query_lower = query.lower().strip()
+        if not query_lower:
+            if self.dropdown:
+                self.dropdown.dismiss()
+            return
             
         self._create_dropdown()
         self.dropdown.clear_widgets()
-        
-        query_lower = query.lower().strip()
         count = 0
         
         for name in self.suggestions:
-            if query_lower in name.lower() or not query_lower:
+            if query_lower in name.lower():
                 btn = Button(
                     text=name, size_hint_y=None, height=dp(44),
                     background_normal='',
@@ -319,35 +323,23 @@ class MatchSetupScreen(Screen):
             Clock.schedule_once(lambda dt: self._scroll_to_widget(instance), 0.3)
 
     def _scroll_to_widget(self, widget):
-        """Scroll the ScrollView so the focused TextInput stays clearly visible where typing."""
-        scroll_view = self.ids.get('setup_scroll')
-        if not scroll_view or not scroll_view.children:
+        """Scroll the ScrollView so the focused TextInput is visible in the center."""
+        sv = self.ids.get('setup_scroll')
+        if not sv or not sv.children:
             return
 
-        content = scroll_view.children[0]
-        content_height = content.height
-        sv_height = scroll_view.height
-        scrollable = content_height - sv_height
+        content = sv.children[0]
+        scrollable = content.height - sv.height
         if scrollable <= 0:
             return
 
-        # Calculate widget Y position in content coordinates (y=0 is bottom of content)
-        widget_win_pos = widget.to_window(0, 0)
-        content_win_pos = content.to_window(0, 0)
-        widget_y_in_content = widget_win_pos[1] - content_win_pos[1]
+        # Position widget comfortably in view (~55% from bottom of viewport)
+        target_scroll_y = (widget.y - sv.height * 0.55) / scrollable
+        new_scroll_y = max(0.0, min(1.0, target_scroll_y))
 
-        # Calculate scroll_y so the widget lands at ~40% height from bottom of visible ScrollView window
-        # scroll_y = 0 means bottom of content, scroll_y = 1 means top of content
-        desired_scroll_y = (widget_y_in_content - sv_height * 0.40) / scrollable
-        new_scroll_y = max(0.0, min(1.0, desired_scroll_y))
-
-        # Only animate if meaningful change
-        if abs(new_scroll_y - scroll_view.scroll_y) < 0.01:
-            return
-
-        Animation.cancel_all(scroll_view, 'scroll_y')
-        anim = Animation(scroll_y=new_scroll_y, duration=0.25, t='out_cubic')
-        anim.start(scroll_view)
+        Animation.cancel_all(sv, 'scroll_y')
+        anim = Animation(scroll_y=new_scroll_y, duration=0.2, t='out_quad')
+        anim.start(sv)
 
     def _update_player_a(self, index, value):
         players = list(self.team_a_players)
