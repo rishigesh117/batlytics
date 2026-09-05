@@ -59,6 +59,7 @@ def init_db(db_path=None):
             team TEXT NOT NULL,
             name TEXT NOT NULL,
             batting_order INTEGER,
+            role TEXT DEFAULT '',
             FOREIGN KEY (match_id) REFERENCES matches(id)
         );
 
@@ -164,6 +165,13 @@ def init_db(db_path=None):
     except sqlite3.OperationalError:
         pass
 
+    # Add role column for players (optional: BAT, BOWL, AR, WK, or empty)
+    try:
+        c.execute("ALTER TABLE players ADD COLUMN role TEXT DEFAULT ''")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
     conn.close()
 
 
@@ -214,13 +222,13 @@ def update_match(match_id, **kwargs):
 
 # ─── Players ─────────────────────────────────────────────────
 
-def add_player(match_id, team, name, batting_order=None, db_path=None):
-    """Add a player to a match team."""
+def add_player(match_id, team, name, batting_order=None, role="", db_path=None):
+    """Add a player to a match team with optional role."""
     conn = get_connection(db_path)
     c = conn.cursor()
     c.execute(
-        "INSERT INTO players (match_id, team, name, batting_order) VALUES (?, ?, ?, ?)",
-        (match_id, team, name, batting_order)
+        "INSERT INTO players (match_id, team, name, batting_order, role) VALUES (?, ?, ?, ?, ?)",
+        (match_id, team, name, batting_order, role or "")
     )
     player_id = c.lastrowid
     conn.commit()
@@ -424,7 +432,7 @@ def get_batting_stats(innings_id, db_path=None):
     conn = get_connection(db_path)
     rows = conn.execute("""
         SELECT
-            p.id, p.name,
+            p.id, p.name, p.role,
             COALESCE(SUM(CASE WHEN b.is_wide = 0 AND b.is_noball = 0 THEN b.runs
                               WHEN b.is_noball = 1 THEN b.runs
                               ELSE 0 END), 0) as runs,
@@ -490,7 +498,7 @@ def get_bowling_stats(innings_id, db_path=None):
     conn = get_connection(db_path)
     rows = conn.execute("""
         SELECT
-            p.id, p.name,
+            p.id, p.name, p.role,
             COUNT(CASE WHEN b.is_wide = 0 AND b.is_noball = 0 THEN b.id END) as legal_balls,
             COALESCE(SUM(b.runs + (CASE WHEN b.is_wide=1 OR b.is_noball=1 THEN b.extras ELSE 0 END)), 0) as runs_conceded,
             COUNT(CASE WHEN b.is_wicket = 1 AND b.wicket_type NOT IN ('run out', 'retired hurt', 'retired out') THEN 1 END) as wickets,

@@ -242,14 +242,14 @@
                         size_hint_y: None
                         height: dp(28)
                         padding: [dp(15), 0, dp(15), 0]
+                        spacing: dp(6)
                         Button:
-                            text: '\u270f'
-                            font_size: '12sp'
-                            size_hint_x: None
-                            width: dp(24)
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 0.5, 0.5, 0.5, 1
+                            size_hint: None, None
+                            size: dp(16), dp(16)
+                            pos_hint: {'center_y': 0.5}
+                            background_normal: 'assets/pencil_icon.png'
+                            background_down: 'assets/pencil_icon.png'
+                            border: 0, 0, 0, 0
                             on_release: root.edit_player_name('striker')
                         Label:
                             text: root.striker_name + (' *' if root.striker_on_strike else '')
@@ -296,6 +296,7 @@
                         size_hint_y: None
                         height: dp(28)
                         padding: [dp(15), 0, dp(15), 0]
+                        spacing: dp(6)
                         canvas.before:
                             Color:
                                 rgba: 0.9, 0.9, 0.9, 1
@@ -303,13 +304,12 @@
                                 points: [self.x, self.y, self.right, self.y]
                                 width: dp(1)
                         Button:
-                            text: '\u270f'
-                            font_size: '12sp'
-                            size_hint_x: None
-                            width: dp(24)
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 0.5, 0.5, 0.5, 1
+                            size_hint: None, None
+                            size: dp(16), dp(16)
+                            pos_hint: {'center_y': 0.5}
+                            background_normal: 'assets/pencil_icon.png'
+                            background_down: 'assets/pencil_icon.png'
+                            border: 0, 0, 0, 0
                             on_release: root.edit_player_name('non_striker')
                         Label:
                             text: root.non_striker_name + (' *' if root.non_striker_on_strike else '')
@@ -410,14 +410,14 @@
                         size_hint_y: None
                         height: dp(28)
                         padding: [dp(15), 0, dp(15), 0]
+                        spacing: dp(6)
                         Button:
-                            text: '\u270f'
-                            font_size: '12sp'
-                            size_hint_x: None
-                            width: dp(24)
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 0.5, 0.5, 0.5, 1
+                            size_hint: None, None
+                            size: dp(16), dp(16)
+                            pos_hint: {'center_y': 0.5}
+                            background_normal: 'assets/pencil_icon.png'
+                            background_down: 'assets/pencil_icon.png'
+                            border: 0, 0, 0, 0
                             on_release: root.edit_player_name('bowler')
                         Label:
                             text: root.bowler_name

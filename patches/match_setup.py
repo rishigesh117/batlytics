@@ -61,6 +61,8 @@ class MatchSetupScreen(Screen):
     team_b_players = ListProperty([])
     team_a_player_names = ListProperty([])
     team_b_player_names = ListProperty([])
+    team_a_roles = ListProperty([])
+    team_b_roles = ListProperty([])
     _from_toss_back = BooleanProperty(False)
     _current_match_id = NumericProperty(0)
 
@@ -72,6 +74,10 @@ class MatchSetupScreen(Screen):
         if self._from_toss_back:
             self._from_toss_back = False
             # Just rebuild the UI from existing data
+            if len(self.team_a_roles) != len(self.team_a_players):
+                self.team_a_roles = [""] * len(self.team_a_players)
+            if len(self.team_b_roles) != len(self.team_b_players):
+                self.team_b_roles = [""] * len(self.team_b_players)
             self._rebuild_player_inputs()
             self._bind_keyboard()
             return
@@ -85,6 +91,8 @@ class MatchSetupScreen(Screen):
         self.team_b_captain = "Captain"
         self.team_a_players = [""] * self.num_players
         self.team_b_players = [""] * self.num_players
+        self.team_a_roles = [""] * self.num_players
+        self.team_b_roles = [""] * self.num_players
         self.team_a_player_names = []
         self.team_b_player_names = []
         self._current_match_id = 0
@@ -172,6 +180,16 @@ class MatchSetupScreen(Screen):
             self.team_b_players.extend([""] * (self.num_players - len(self.team_b_players)))
         elif len(self.team_b_players) > self.num_players:
             self.team_b_players = self.team_b_players[:self.num_players]
+
+        if len(self.team_a_roles) < self.num_players:
+            self.team_a_roles.extend([""] * (self.num_players - len(self.team_a_roles)))
+        elif len(self.team_a_roles) > self.num_players:
+            self.team_a_roles = self.team_a_roles[:self.num_players]
+
+        if len(self.team_b_roles) < self.num_players:
+            self.team_b_roles.extend([""] * (self.num_players - len(self.team_b_roles)))
+        elif len(self.team_b_roles) > self.num_players:
+            self.team_b_roles = self.team_b_roles[:self.num_players]
             
         self._rebuild_player_inputs()
 
@@ -201,17 +219,77 @@ class MatchSetupScreen(Screen):
                 self._rebuild_player_inputs()
                 self._sync_captain_lists()
 
+    def _open_role_popup(self, team, index, button):
+        """Open an optional role selection popup for player."""
+        p_name = (self.team_a_players[index] if team == 'A' else self.team_b_players[index]).strip()
+        display_title = f"Role: {p_name or f'Player {index + 1}'}"
+
+        popup = ModalView(size_hint=(0.85, None), height=dp(310), background_color=(0.12, 0.12, 0.12, 0.95))
+        content = BoxLayout(orientation='vertical', padding=dp(16), spacing=dp(8))
+
+        content.add_widget(Label(
+            text=display_title, font_size='16sp', bold=True, color=(1, 1, 1, 1),
+            size_hint_y=None, height=dp(28)
+        ))
+        content.add_widget(Label(
+            text='(Optional — tap to select)', font_size='12sp', color=(0.7, 0.7, 0.7, 1),
+            size_hint_y=None, height=dp(18)
+        ))
+
+        roles = [
+            ("Batsman", "BAT", (0.18, 0.49, 0.20, 1)),
+            ("Bowler", "BOWL", (0.12, 0.53, 0.90, 1)),
+            ("All-Rounder", "AR", (0.96, 0.49, 0, 1)),
+            ("Wicket Keeper", "WK", (0.55, 0.27, 0.75, 1)),
+            ("None / Clear", "", (0.35, 0.35, 0.35, 1))
+        ]
+
+        def _set_role(short):
+            popup.dismiss()
+            if team == 'A':
+                roles_list = list(self.team_a_roles)
+                while len(roles_list) <= index:
+                    roles_list.append("")
+                roles_list[index] = short
+                self.team_a_roles = roles_list
+            else:
+                roles_list = list(self.team_b_roles)
+                while len(roles_list) <= index:
+                    roles_list.append("")
+                roles_list[index] = short
+                self.team_b_roles = roles_list
+            button.text = f"[{short}]" if short else "[ - ]"
+
+        for full, short, color in roles:
+            tag = f"[{short}]" if short else "[ - ]"
+            btn = Button(
+                text=f"{full}  {tag}", font_size='14sp', bold=True,
+                background_normal='', background_color=color, color=(1, 1, 1, 1),
+                size_hint_y=None, height=dp(38)
+            )
+            btn.bind(on_release=lambda inst, s=short: _set_role(s))
+            content.add_widget(btn)
+
+        popup.add_widget(content)
+        popup.open()
+
     def _rebuild_player_inputs(self):
-        """Rebuild the player name input lists."""
+        """Rebuild the player name input lists with optional role selectors."""
+        while len(self.team_a_roles) < len(self.team_a_players):
+            self.team_a_roles.append("")
+        while len(self.team_b_roles) < len(self.team_b_players):
+            self.team_b_roles.append("")
+
         # Team A
         container_a = self.ids.get("team_a_container")
         if container_a:
             container_a.clear_widgets()
             for i in range(len(self.team_a_players)):
+                row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(48), spacing=dp(6))
                 inp = PlayerInput(
                     hint_text=f"Player {i + 1} Name",
                     text=self.team_a_players[i],
-                    size_hint_y=None,
+                    size_hint_x=0.74,
                     height=dp(48),
                     font_size='16sp',
                     background_color=(1, 1, 1, 1),
@@ -219,17 +297,34 @@ class MatchSetupScreen(Screen):
                 )
                 inp.bind(text=lambda inst, val, idx=i: self._update_player_a(idx, val))
                 inp.bind(focus=self._on_input_focus)
-                container_a.add_widget(inp)
+
+                role_val = self.team_a_roles[i] if i < len(self.team_a_roles) else ""
+                role_btn = Button(
+                    text=f"[{role_val}]" if role_val else "[ - ]",
+                    size_hint_x=0.26,
+                    height=dp(48),
+                    font_size='13sp',
+                    bold=True,
+                    background_normal='',
+                    background_color=(0.94, 0.95, 0.96, 1),
+                    color=(0.2, 0.2, 0.2, 1)
+                )
+                role_btn.bind(on_release=lambda inst, idx=i, b=role_btn: self._open_role_popup('A', idx, b))
+
+                row.add_widget(inp)
+                row.add_widget(role_btn)
+                container_a.add_widget(row)
 
         # Team B
         container_b = self.ids.get("team_b_container")
         if container_b:
             container_b.clear_widgets()
             for i in range(len(self.team_b_players)):
+                row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(48), spacing=dp(6))
                 inp = PlayerInput(
                     hint_text=f"Player {i + 1} Name",
                     text=self.team_b_players[i],
-                    size_hint_y=None,
+                    size_hint_x=0.74,
                     height=dp(48),
                     font_size='16sp',
                     background_color=(1, 1, 1, 1),
@@ -237,7 +332,23 @@ class MatchSetupScreen(Screen):
                 )
                 inp.bind(text=lambda inst, val, idx=i: self._update_player_b(idx, val))
                 inp.bind(focus=self._on_input_focus)
-                container_b.add_widget(inp)
+
+                role_val = self.team_b_roles[i] if i < len(self.team_b_roles) else ""
+                role_btn = Button(
+                    text=f"[{role_val}]" if role_val else "[ - ]",
+                    size_hint_x=0.26,
+                    height=dp(48),
+                    font_size='13sp',
+                    bold=True,
+                    background_normal='',
+                    background_color=(0.94, 0.95, 0.96, 1),
+                    color=(0.2, 0.2, 0.2, 1)
+                )
+                role_btn.bind(on_release=lambda inst, idx=i, b=role_btn: self._open_role_popup('B', idx, b))
+
+                row.add_widget(inp)
+                row.add_widget(role_btn)
+                container_b.add_widget(row)
 
     def _on_input_focus(self, instance, value):
         """When any input gains focus, scroll it into view after a short delay."""
@@ -500,9 +611,11 @@ class MatchSetupScreen(Screen):
 
         # Add players
         for i, name in enumerate(a_players):
-            db.add_player(match_id, t_a_name, name, i + 1)
+            role_a = self.team_a_roles[i] if i < len(self.team_a_roles) else ""
+            db.add_player(match_id, t_a_name, name, i + 1, role=role_a)
         for i, name in enumerate(b_players):
-            db.add_player(match_id, t_b_name, name, i + 1)
+            role_b = self.team_b_roles[i] if i < len(self.team_b_roles) else ""
+            db.add_player(match_id, t_b_name, name, i + 1, role=role_b)
 
         # Pass match_id to toss screen
         toss_screen = self.manager.get_screen('toss')

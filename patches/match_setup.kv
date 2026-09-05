@@ -1,3 +1,10 @@
+<CaptainSpinnerOption@SpinnerOption>:
+    background_normal: ''
+    background_color: 1, 1, 1, 1
+    color: 0.1, 0.1, 0.1, 1
+    font_size: '15sp'
+    height: dp(44)
+
 <MatchSetupScreen>:
     name: 'match_setup'
     canvas.before:
@@ -305,84 +312,122 @@
                     orientation: 'vertical'
                     size_hint_y: None
                     height: self.minimum_height
-                    spacing: dp(4)
+                    spacing: dp(6)
                     BoxLayout:
                         size_hint_y: None
                         height: dp(32)
                         Label:
                             text: 'Team A Squad'
-                            font_size: '14sp'
+                            font_size: '15sp'
                             bold: True
                             color: 0.18, 0.49, 0.20, 1
                             halign: 'left'
                             text_size: self.size
+
+                    # Team A Captain Spinner (at TOP)
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(10)
+                        padding: [dp(10), dp(2), dp(10), dp(2)]
+                        canvas.before:
+                            Color:
+                                rgba: 1, 1, 1, 1
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(6)]
+                            Color:
+                                rgba: 0.18, 0.49, 0.20, 0.4
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(6)]
+                                width: dp(1)
+                        Label:
+                            text: 'Captain:'
+                            font_size: '14sp'
+                            bold: True
+                            color: 0.18, 0.49, 0.20, 1
+                            size_hint_x: None
+                            width: dp(65)
+                        Spinner:
+                            id: team_a_captain_spinner
+                            text: root.team_a_captain
+                            values: root.team_a_player_names
+                            font_size: '15sp'
+                            bold: True
+                            color: 0.1, 0.1, 0.1, 1
+                            background_normal: ''
+                            background_color: 0.95, 0.97, 0.95, 1
+                            option_cls: 'CaptainSpinnerOption'
+                            on_text: root.team_a_captain = self.text
+
                     BoxLayout:
                         orientation: 'vertical'
                         id: team_a_container
                         size_hint_y: None
                         height: self.minimum_height
                         spacing: dp(4)
-                        
-                    # Team A Captain Spinner
-                    BoxLayout:
-                        size_hint_y: None
-                        height: dp(40)
-                        spacing: dp(8)
-                        Label:
-                            text: 'Captain:'
-                            font_size: '13sp'
-                            color: 0.5, 0.5, 0.5, 1
-                            size_hint_x: None
-                            width: dp(60)
-                        Spinner:
-                            text: root.team_a_captain
-                            values: root.team_a_player_names
-                            font_size: '14sp'
-                            background_color: 0.9, 0.9, 0.9, 1
-                            color: 0.2, 0.2, 0.2, 1
-                            on_text: root.team_a_captain = self.text
 
                 # Team B Squad
                 BoxLayout:
                     orientation: 'vertical'
                     size_hint_y: None
                     height: self.minimum_height
-                    spacing: dp(4)
+                    spacing: dp(6)
                     BoxLayout:
                         size_hint_y: None
                         height: dp(32)
                         Label:
                             text: 'Team B Squad'
-                            font_size: '14sp'
+                            font_size: '15sp'
                             bold: True
                             color: 0.96, 0.49, 0, 1
                             halign: 'left'
                             text_size: self.size
+
+                    # Team B Captain Spinner (at TOP)
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(10)
+                        padding: [dp(10), dp(2), dp(10), dp(2)]
+                        canvas.before:
+                            Color:
+                                rgba: 1, 1, 1, 1
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(6)]
+                            Color:
+                                rgba: 0.96, 0.49, 0, 0.4
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(6)]
+                                width: dp(1)
+                        Label:
+                            text: 'Captain:'
+                            font_size: '14sp'
+                            bold: True
+                            color: 0.96, 0.49, 0, 1
+                            size_hint_x: None
+                            width: dp(65)
+                        Spinner:
+                            id: team_b_captain_spinner
+                            text: root.team_b_captain
+                            values: root.team_b_player_names
+                            font_size: '15sp'
+                            bold: True
+                            color: 0.1, 0.1, 0.1, 1
+                            background_normal: ''
+                            background_color: 0.99, 0.97, 0.94, 1
+                            option_cls: 'CaptainSpinnerOption'
+                            on_text: root.team_b_captain = self.text
+
                     BoxLayout:
                         orientation: 'vertical'
                         id: team_b_container
                         size_hint_y: None
                         height: self.minimum_height
                         spacing: dp(4)
-                        
-                    # Team B Captain Spinner
-                    BoxLayout:
-                        size_hint_y: None
-                        height: dp(40)
-                        spacing: dp(8)
-                        Label:
-                            text: 'Captain:'
-                            font_size: '13sp'
-                            color: 0.5, 0.5, 0.5, 1
-                            size_hint_x: None
-                            width: dp(60)
-                        Spinner:
-                            text: root.team_b_captain
-                            values: root.team_b_player_names
-                            font_size: '14sp'
-                            background_color: 0.9, 0.9, 0.9, 1
-                            color: 0.2, 0.2, 0.2, 1
-                            on_text: root.team_b_captain = self.text
 
                 # Dynamic keyboard spacer — grows when keyboard opens
                 # so content can scroll above the keyboard

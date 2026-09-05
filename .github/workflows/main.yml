@@ -66,6 +66,8 @@ jobs:
           cp "$REPO_ROOT/patches/live_scoring.py" screens/live_scoring.py
           cp "$REPO_ROOT/patches/live_scoring.kv" kv/live_scoring.kv
           cp "$REPO_ROOT/database.py" database.py
+          mkdir -p assets
+          cp "$REPO_ROOT/assets/pencil_icon.png" assets/pencil_icon.png
 
           # 4. Fix buildozer.spec for Android 14 (API 34) + NDK 26b
           sed -i 's/,reportlab//g' buildozer.spec

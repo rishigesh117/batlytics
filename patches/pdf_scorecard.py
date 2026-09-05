@@ -228,8 +228,8 @@ class _PDFWriter:
                 x_text = x + (col_widths[i] - approx_w) / 2 if align_center else x + 4
 
                 # Truncate long text for first two columns
-                if len(cell_text) > 20 and i < 2:
-                    cell_text = cell_text[:18] + ".."
+                if len(cell_text) > 26 and i < 2:
+                    cell_text = cell_text[:24] + ".."
                     
                 self._current_page_stream += self._text_cmd(
                     x_text, self._y - 13, cell_text, font="F1", size=8.5,
@@ -382,7 +382,17 @@ class ScorecardPDF:
             toss_winner = self.match.get('team_a', 'Unknown')
         toss_choice = self.match.get('toss_choice') or 'bat'
         pdf.write_info_line("Toss", f"{toss_winner} won and chose to {toss_choice}")
-        
+
+        cap_a = (self.match.get('team_a_captain') or "").strip()
+        cap_b = (self.match.get('team_b_captain') or "").strip()
+        if (cap_a and cap_a != "Captain") or (cap_b and cap_b != "Captain"):
+            cap_parts = []
+            if cap_a and cap_a != "Captain":
+                cap_parts.append(f"{self.match['team_a']}: {cap_a} (c)")
+            if cap_b and cap_b != "Captain":
+                cap_parts.append(f"{self.match['team_b']}: {cap_b} (c)")
+            pdf.write_info_line("Captains", " | ".join(cap_parts))
+
         pdf.write_info_line("Date", date_str)
         pdf.write_spacer(20)
 
@@ -409,10 +419,15 @@ class ScorecardPDF:
 
         for idx, inn in enumerate(innings_list):
             team_name = inn['batting_team']
+            batting_captain = cap_a if team_name == self.match['team_a'] else cap_b
+            bowling_captain = cap_b if team_name == self.match['team_a'] else cap_a
             overs_balls = inn['total_overs_balls']
             score_str = f"{inn['total_runs']}/{inn['total_wickets']} ({overs_balls // 6}.{overs_balls % 6} ov)"
 
-            pdf.write_heading(f"{team_name} Innings - {score_str}")
+            if batting_captain and batting_captain != "Captain":
+                pdf.write_heading(f"{team_name} Innings (Capt: {batting_captain}) - {score_str}")
+            else:
+                pdf.write_heading(f"{team_name} Innings - {score_str}")
 
             # Batting Table
             bat_headers = ["Batter", "Status", "R", "B", "4s", "6s", "SR"]
@@ -434,8 +449,14 @@ class ScorecardPDF:
                     else:
                         status = how or "out"
 
+                batter_display = s['name']
+                if batting_captain and s['name'] == batting_captain:
+                    batter_display += " (c)"
+                if s.get('role'):
+                    batter_display += f" [{s['role']}]"
+
                 bat_rows.append([
-                    s['name'], status, str(s['runs']), str(balls_faced),
+                    batter_display, status, str(s['runs']), str(balls_faced),
                     str(s['fours']), str(s['sixes']), sr
                 ])
 
@@ -470,8 +491,14 @@ class ScorecardPDF:
             bowl_rows = []
             bowl_stats = db.get_bowling_stats(inn['id'], db_path=self.db_path)
             for bw in bowl_stats:
+                bowler_display = bw['name']
+                if bowling_captain and bw['name'] == bowling_captain:
+                    bowler_display += " (c)"
+                if bw.get('role'):
+                    bowler_display += f" [{bw['role']}]"
+
                 bowl_rows.append([
-                    bw['name'],
+                    bowler_display,
                     str(bw.get('overs', '0')),
                     str(bw.get('maidens', 0)),
                     str(bw.get('runs_conceded', 0)),
