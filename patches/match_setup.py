@@ -10,94 +10,23 @@ from kivy.uix.label import Label
 import database as db
 
 
-from kivy.uix.dropdown import DropDown
 from kivy.clock import Clock
 from kivy.properties import ObjectProperty
 from kivy.core.window import Window
 from kivy.animation import Animation
 
-class AutocompleteInput(TextInput):
-    """A TextInput that shows a dropdown of suggestions."""
-    suggestions = ListProperty([])
-    
+class PlayerInput(TextInput):
+    """Simple TextInput for player names with Enter-to-next-field navigation."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.dropdown = None
         self.multiline = False
         self.write_tab = False
-        
-    def _create_dropdown(self):
-        if self.dropdown:
-            return
-        self.dropdown = DropDown(auto_width=False, width=self.width)
-        self.dropdown.bind(on_select=self._on_dropdown_select)
-        
-    def _on_dropdown_select(self, instance, text):
-        self.text = text
-        self.dropdown.dismiss()
-        self.focus = False
-        
-    def on_text(self, instance, value):
-        if not self.focus:
-            return
-            
-        self._update_suggestions(value)
-        
-    def on_focus(self, instance, value):
-        if value:
-            # Opened focus
-            self._update_suggestions(self.text)
-        else:
-            # Lost focus
-            if self.dropdown:
-                self.dropdown.dismiss()
-                
-    def _update_suggestions(self, query):
-        if not self.suggestions:
-            if self.dropdown:
-                self.dropdown.dismiss()
-            return
-
-        query_lower = query.lower().strip()
-        if not query_lower:
-            if self.dropdown:
-                self.dropdown.dismiss()
-            return
-            
-        self._create_dropdown()
-        self.dropdown.clear_widgets()
-        count = 0
-        
-        for name in self.suggestions:
-            if query_lower in name.lower():
-                btn = Button(
-                    text=name, size_hint_y=None, height=dp(44),
-                    background_normal='',
-                    background_color=(1, 1, 1, 1),
-                    color=(0.1, 0.1, 0.1, 1),
-                    font_size='15sp',
-                    halign='left',
-                    padding=(dp(12), 0)
-                )
-                btn.bind(size=btn.setter('text_size'))
-                btn.bind(on_release=lambda btn: self.dropdown.select(btn.text))
-                self.dropdown.add_widget(btn)
-                count += 1
-                
-            if count >= 8: # Limit to 8 suggestions
-                break
-                
-        if count > 0:
-            if not self.dropdown.parent:
-                self.dropdown.open(self)
-        else:
-            self.dropdown.dismiss()
 
     def keyboard_on_key_down(self, window, keycode, text, modifiers):
         """Handle Enter/Next key to move focus to the next input field."""
         key, key_str = keycode
         if key in (13, 271):  # Enter or Numpad Enter
-            # Find the next input to focus
             next_input = self._find_next_input()
             if next_input:
                 next_input.focus = True
@@ -106,7 +35,6 @@ class AutocompleteInput(TextInput):
 
     def _find_next_input(self):
         """Walk up to find the screen's ordered input list and return the next one."""
-        # Walk up to find the MatchSetupScreen
         parent = self.parent
         while parent and not isinstance(parent, MatchSetupScreen):
             parent = parent.parent
@@ -133,7 +61,6 @@ class MatchSetupScreen(Screen):
     team_b_players = ListProperty([])
     team_a_player_names = ListProperty([])
     team_b_player_names = ListProperty([])
-    all_player_suggestions = ListProperty([])
     _from_toss_back = BooleanProperty(False)
     _current_match_id = NumericProperty(0)
 
@@ -142,8 +69,6 @@ class MatchSetupScreen(Screen):
 
     def on_enter(self):
         """Reset form on entry, unless returning from toss."""
-        self.all_player_suggestions = db.get_all_player_names()
-        
         if self._from_toss_back:
             self._from_toss_back = False
             # Just rebuild the UI from existing data
@@ -283,10 +208,9 @@ class MatchSetupScreen(Screen):
         if container_a:
             container_a.clear_widgets()
             for i in range(len(self.team_a_players)):
-                inp = AutocompleteInput(
+                inp = PlayerInput(
                     hint_text=f"Player {i + 1} Name",
                     text=self.team_a_players[i],
-                    suggestions=self.all_player_suggestions,
                     size_hint_y=None,
                     height=dp(48),
                     font_size='16sp',
@@ -302,10 +226,9 @@ class MatchSetupScreen(Screen):
         if container_b:
             container_b.clear_widgets()
             for i in range(len(self.team_b_players)):
-                inp = AutocompleteInput(
+                inp = PlayerInput(
                     hint_text=f"Player {i + 1} Name",
                     text=self.team_b_players[i],
-                    suggestions=self.all_player_suggestions,
                     size_hint_y=None,
                     height=dp(48),
                     font_size='16sp',

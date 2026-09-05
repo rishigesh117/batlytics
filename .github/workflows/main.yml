@@ -64,6 +64,7 @@ jobs:
           cp "$REPO_ROOT/patches/match_history.py" screens/match_history.py
           cp "$REPO_ROOT/patches/settings.py" screens/settings.py
           cp "$REPO_ROOT/patches/live_scoring.py" screens/live_scoring.py
+          cp "$REPO_ROOT/patches/live_scoring.kv" kv/live_scoring.kv
           cp "$REPO_ROOT/database.py" database.py
 
           # 4. Fix buildozer.spec for Android 14 (API 34) + NDK 26b

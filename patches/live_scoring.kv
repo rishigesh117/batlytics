@@ -1,0 +1,656 @@
+<LiveScoringScreen>:
+    name: 'live_scoring'
+    canvas.before:
+        Color:
+            rgba: 0.94, 0.95, 0.96, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [0, 0, 0, 0]
+        spacing: 0
+
+        # Header bar
+        BoxLayout:
+            size_hint_y: None
+            height: dp(56)
+            padding: [dp(8), dp(8), dp(16), dp(8)]
+            canvas.before:
+                Color:
+                    rgba: 1, 1, 1, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: 0.9, 0.9, 0.9, 1
+                Line:
+                    points: [self.x, self.y, self.right, self.y]
+                    width: dp(1)
+            Button:
+                text: '<'
+                font_size: '24sp'
+                color: 0.1, 0.1, 0.1, 1
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                size_hint_x: None
+                width: dp(48)
+                on_release: root.go_back()
+            Label:
+                text: 'Batlytics Live'
+                font_size: '18sp'
+                bold: True
+                color: 0.1, 0.1, 0.1, 1
+                halign: 'left'
+                text_size: self.size
+                valign: 'middle'
+            Label:
+                text: root.innings_label
+                font_size: '11sp'
+                color: 0.82, 0.18, 0.18, 1
+                bold: True
+                halign: 'right'
+                text_size: self.size
+                valign: 'middle'
+                size_hint_x: None
+                width: dp(100)
+            Button:
+                text: 'X'
+                font_size: '16sp'
+                bold: True
+                color: 0.6, 0.6, 0.6, 1
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                size_hint_x: None
+                width: dp(40)
+                on_release: root.cancel_match()
+
+        # Score header (Google style dark clean)
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(100)
+            padding: [dp(20), dp(15), dp(20), dp(10)]
+            canvas.before:
+                Color:
+                    rgba: 0.1, 0.12, 0.15, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            Label:
+                text: root.match_title
+                font_size: '12sp'
+                color: 0.7, 0.7, 0.7, 1
+                size_hint_y: None
+                height: dp(20)
+                halign: 'left'
+                text_size: self.size
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(50)
+                Label:
+                    text: root.score_text
+                    font_size: '42sp'
+                    bold: True
+                    color: 1, 1, 1, 1
+                    halign: 'left'
+                    text_size: self.size
+                    valign: 'middle'
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_x: None
+                    width: dp(100)
+                    Label:
+                        text: 'Ov ' + root.overs_text
+                        font_size: '13sp'
+                        color: 0.8, 0.8, 0.8, 1
+                        halign: 'right'
+                        text_size: self.size
+                    Label:
+                        text: 'CRR ' + root.run_rate_text
+                        font_size: '13sp'
+                        color: 0.8, 0.8, 0.8, 1
+                        halign: 'right'
+                        text_size: self.size
+
+        # Target (2nd innings)
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: dp(40) if root.target_score > 0 else 0
+            opacity: 1 if root.target_score > 0 else 0
+            canvas.before:
+                Color:
+                    rgba: 0.9, 0.95, 1.0, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Label:
+                text: f'[b]Target:[/b] {root.target_score}'
+                markup: True
+                font_size: '13sp'
+                color: 0.1, 0.1, 0.1, 1
+                size_hint_y: None
+                height: dp(20)
+                halign: 'center'
+            Label:
+                text: f'[b]Need:[/b] {root.runs_needed} Runs in {root.balls_remaining} Balls'
+                markup: True
+                font_size: '13sp'
+                color: 0.1, 0.1, 0.1, 1
+                size_hint_y: None
+                height: dp(20)
+                halign: 'center'
+
+        # Free Hit indicator
+        Label:
+            text: 'FREE HIT'
+            font_size: '14sp'
+            bold: True
+            color: 1, 1, 1, 1
+            size_hint_y: None
+            height: dp(28) if root.is_free_hit else 0
+            opacity: 1 if root.is_free_hit else 0
+            halign: 'center'
+            canvas.before:
+                Color:
+                    rgba: (0.9, 0.3, 0.2, 1) if root.is_free_hit else (0, 0, 0, 0)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [0, 0, 0, dp(10)]
+                spacing: 0
+
+                # Batsman / Bowler Table Dashboard
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: dp(140)
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+                    # Batter Header
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(28)
+                        padding: [dp(15), 0, dp(15), 0]
+                        canvas.before:
+                            Color:
+                                rgba: 0.97, 0.97, 0.97, 1
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                            Color:
+                                rgba: 0.9, 0.9, 0.9, 1
+                            Line:
+                                points: [self.x, self.y, self.right, self.y]
+                                width: dp(1)
+                        Label:
+                            text: 'Batter'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+                        Label:
+                            text: 'R'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: 'B'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: '4s'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: '6s'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: 'SR'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(50)
+
+                    # Striker Row
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(28)
+                        padding: [dp(15), 0, dp(15), 0]
+                        Button:
+                            text: '\u270f'
+                            font_size: '12sp'
+                            size_hint_x: None
+                            width: dp(24)
+                            background_normal: ''
+                            background_color: 0, 0, 0, 0
+                            color: 0.5, 0.5, 0.5, 1
+                            on_release: root.edit_player_name('striker')
+                        Label:
+                            text: root.striker_name + (' *' if root.striker_on_strike else '')
+                            font_size: '13sp'
+                            bold: root.striker_on_strike
+                            color: (0.1, 0.5, 0.8, 1) if root.striker_on_strike else (0.2, 0.2, 0.2, 1)
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+                        Label:
+                            text: root.striker_runs
+                            font_size: '14sp'
+                            bold: True
+                            color: 0.1, 0.1, 0.1, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: root.striker_balls
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: root.striker_4s
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.striker_6s
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.striker_sr
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(50)
+
+                    # Non-Striker Row
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(28)
+                        padding: [dp(15), 0, dp(15), 0]
+                        canvas.before:
+                            Color:
+                                rgba: 0.9, 0.9, 0.9, 1
+                            Line:
+                                points: [self.x, self.y, self.right, self.y]
+                                width: dp(1)
+                        Button:
+                            text: '\u270f'
+                            font_size: '12sp'
+                            size_hint_x: None
+                            width: dp(24)
+                            background_normal: ''
+                            background_color: 0, 0, 0, 0
+                            color: 0.5, 0.5, 0.5, 1
+                            on_release: root.edit_player_name('non_striker')
+                        Label:
+                            text: root.non_striker_name + (' *' if root.non_striker_on_strike else '')
+                            font_size: '13sp'
+                            bold: root.non_striker_on_strike
+                            color: (0.1, 0.5, 0.8, 1) if root.non_striker_on_strike else (0.2, 0.2, 0.2, 1)
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+                        Label:
+                            text: root.non_striker_runs
+                            font_size: '14sp'
+                            bold: True
+                            color: 0.1, 0.1, 0.1, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: root.non_striker_balls
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: root.non_striker_4s
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.non_striker_6s
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.non_striker_sr
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(50)
+
+                    # Bowler Header
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(28)
+                        padding: [dp(15), 0, dp(15), 0]
+                        canvas.before:
+                            Color:
+                                rgba: 0.97, 0.97, 0.97, 1
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                            Color:
+                                rgba: 0.9, 0.9, 0.9, 1
+                            Line:
+                                points: [self.x, self.y, self.right, self.y]
+                                width: dp(1)
+                        Label:
+                            text: 'Bowler'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+                        Label:
+                            text: 'O'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: 'M'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: 'R'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: 'W'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: 'ER'
+                            font_size: '12sp'
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_x: None
+                            width: dp(50)
+
+                    # Bowler Row
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(28)
+                        padding: [dp(15), 0, dp(15), 0]
+                        Button:
+                            text: '\u270f'
+                            font_size: '12sp'
+                            size_hint_x: None
+                            width: dp(24)
+                            background_normal: ''
+                            background_color: 0, 0, 0, 0
+                            color: 0.5, 0.5, 0.5, 1
+                            on_release: root.edit_player_name('bowler')
+                        Label:
+                            text: root.bowler_name
+                            font_size: '13sp'
+                            color: 0.1, 0.5, 0.8, 1
+                            bold: True
+                            halign: 'left'
+                            text_size: self.size
+                            valign: 'middle'
+                        Label:
+                            text: root.bowler_overs
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(35)
+                        Label:
+                            text: root.bowler_maidens
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.bowler_runs
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.bowler_wickets
+                            font_size: '14sp'
+                            bold: True
+                            color: 0.1, 0.1, 0.1, 1
+                            size_hint_x: None
+                            width: dp(30)
+                        Label:
+                            text: root.bowler_econ
+                            font_size: '13sp'
+                            color: 0.3, 0.3, 0.3, 1
+                            size_hint_x: None
+                            width: dp(50)
+
+                # Recent Balls (Wagon)
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    padding: [dp(15), 0, dp(15), 0]
+                    spacing: dp(5)
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                        Color:
+                            rgba: 0.9, 0.9, 0.9, 1
+                        Line:
+                            points: [self.x, self.top, self.right, self.top]
+                            width: dp(1)
+                    Label:
+                        text: 'Recent'
+                        font_size: '12sp'
+                        color: 0.4, 0.4, 0.4, 1
+                        size_hint_x: None
+                        width: dp(45)
+                        halign: 'left'
+                        text_size: self.size
+                        valign: 'middle'
+                    ScrollView:
+                        do_scroll_y: False
+                        BoxLayout:
+                            id: recent_balls_container
+                            size_hint_x: None
+                            width: self.minimum_width
+                            spacing: dp(4)
+                            padding: [0, dp(8), 0, dp(8)]
+                            # Dynamically populated via Python
+                            
+                # Partnership
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(36)
+                    padding: [dp(15), 0, dp(15), 0]
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                        Color:
+                            rgba: 0.9, 0.9, 0.9, 1
+                        Line:
+                            points: [self.x, self.top, self.right, self.top]
+                            width: dp(1)
+                    Label:
+                        text: 'Partnership'
+                        font_size: '12sp'
+                        color: 0.4, 0.4, 0.4, 1
+                        halign: 'left'
+                        text_size: self.size
+                        valign: 'middle'
+                    Label:
+                        text: root.partnership_text
+                        font_size: '13sp'
+                        bold: True
+                        color: 0.2, 0.2, 0.2, 1
+                        halign: 'right'
+                        text_size: self.size
+                        valign: 'middle'
+
+                # Gap
+                Widget:
+                    size_hint_y: None
+                    height: dp(15)
+
+                # Control Panel (Bottom)
+                BoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(12), dp(0), dp(12), dp(10)]
+                    spacing: dp(8)
+                    size_hint_y: None
+                    height: dp(260)
+
+                    # Extras row
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(50)
+                        spacing: dp(8)
+
+                        Button:
+                            text: 'WIDE'
+                            font_size: '14sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.96, 0.6, 0.1, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.score_wide()
+
+                        Button:
+                            text: 'NO BALL'
+                            font_size: '14sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.96, 0.6, 0.1, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.score_noball()
+
+
+
+                    # Scoring grid
+                    GridLayout:
+                        cols: 4
+                        size_hint_y: None
+                        height: dp(180)
+                        spacing: dp(8)
+
+                        # Row 1: 0, 1, 2, 3
+                        Button:
+                            text: '0'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.9, 0.9, 0.9, 1
+                            color: 0.2, 0.2, 0.2, 1
+                            on_release: root.score_runs(0)
+                        Button:
+                            text: '1'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.9, 0.9, 0.9, 1
+                            color: 0.2, 0.2, 0.2, 1
+                            on_release: root.score_runs(1)
+                        Button:
+                            text: '2'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.9, 0.9, 0.9, 1
+                            color: 0.2, 0.2, 0.2, 1
+                            on_release: root.score_runs(2)
+                        Button:
+                            text: '3'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.9, 0.9, 0.9, 1
+                            color: 0.2, 0.2, 0.2, 1
+                            on_release: root.score_runs(3)
+
+                        # Row 2: 4, 6, W, Undo
+                        Button:
+                            text: '4'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.12, 0.58, 0.25, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.score_runs(4)
+                        Button:
+                            text: '6'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.12, 0.58, 0.25, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.score_runs(6)
+                        Button:
+                            text: 'W'
+                            font_size: '22sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.85, 0.2, 0.2, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.score_wicket()
+                        Button:
+                            text: 'UNDO'
+                            font_size: '18sp'
+                            bold: True
+                            background_normal: ''
+                            background_color: 0.5, 0.5, 0.5, 1
+                            color: 1, 1, 1, 1
+                            on_release: root.undo_ball()
+
+                # Scorecard button
+                BoxLayout:
+                    padding: [dp(12), 0, dp(12), 0]
+                    size_hint_y: None
+                    height: dp(50)
+                    Button:
+                        text: 'View Full Scorecard'
+                        font_size: '14sp'
+                        bold: True
+                        background_normal: ''
+                        background_color: 0.9, 0.9, 0.9, 1
+                        color: 0.12, 0.58, 0.25, 1
+                        on_release: root.go_scorecard()

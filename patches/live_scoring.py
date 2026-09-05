@@ -693,6 +693,72 @@ class LiveScoringScreen(Screen):
         popup.add_widget(content)
         popup.open()
 
+    def edit_player_name(self, role):
+        """Show a popup to edit a player's name mid-match."""
+        if role == 'striker':
+            player_id = self.engine.striker_id
+            current_name = self.striker_name
+        elif role == 'non_striker':
+            player_id = self.engine.non_striker_id
+            current_name = self.non_striker_name
+        elif role == 'bowler':
+            player_id = self.engine.bowler_id
+            current_name = self.bowler_name
+        else:
+            return
+
+        if not player_id:
+            return
+
+        popup = ModalView(size_hint=(0.85, None), height=dp(200),
+                          background_color=(0.12, 0.12, 0.12, 0.95))
+        content = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(12))
+
+        content.add_widget(Label(
+            text='Edit Player Name',
+            font_size='18sp', bold=True, color=(1, 1, 1, 1),
+            size_hint_y=None, height=dp(30)
+        ))
+
+        name_input = TextInput(
+            text=current_name,
+            multiline=False,
+            font_size='16sp',
+            size_hint_y=None,
+            height=dp(44),
+            padding=[dp(10), dp(10), dp(10), dp(10)],
+            background_color=(1, 1, 1, 1),
+            foreground_color=(0.1, 0.1, 0.1, 1)
+        )
+        content.add_widget(name_input)
+
+        btn_row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(10))
+        cancel_btn = Button(
+            text='Cancel', font_size='15sp', bold=True,
+            background_normal='', background_color=(0.4, 0.4, 0.4, 1),
+            color=(1, 1, 1, 1)
+        )
+        save_btn = Button(
+            text='Save', font_size='15sp', bold=True,
+            background_normal='', background_color=(0.18, 0.49, 0.20, 1),
+            color=(1, 1, 1, 1)
+        )
+        cancel_btn.bind(on_release=lambda x: popup.dismiss())
+
+        def _save(instance):
+            new_name = name_input.text.strip()
+            if new_name:
+                db.update_player_name(player_id, new_name)
+                popup.dismiss()
+                self._refresh_display()
+
+        save_btn.bind(on_release=_save)
+        btn_row.add_widget(cancel_btn)
+        btn_row.add_widget(save_btn)
+        content.add_widget(btn_row)
+
+        popup.add_widget(content)
+        popup.open()
 
 
     # ─── Event Handling ──────────────────────────────────────

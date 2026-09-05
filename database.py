@@ -253,6 +253,14 @@ def get_player(player_id, db_path=None):
     return dict(row) if row else None
 
 
+def update_player_name(player_id, new_name, db_path=None):
+    """Update a player's name."""
+    conn = get_connection(db_path)
+    conn.execute("UPDATE players SET name = ? WHERE id = ?", (new_name, player_id))
+    conn.commit()
+    conn.close()
+
+
 def get_all_player_names(db_path=None):
     """Get unique player names from the most recent match, excluding defaults."""
     conn = get_connection(db_path)
